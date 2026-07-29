@@ -24,6 +24,11 @@ namespace CPUFramework
 
         public static DataTable GetDataTable(SqlCommand cmd)
         {
+            return DoExecuteSql(cmd, true);
+        }
+
+        private static DataTable DoExecuteSql(SqlCommand cmd, bool loadtable)
+        {
             
             DataTable dt = new();
             using (SqlConnection conn = new SqlConnection(SQLUtility.ConnectionString))
@@ -34,12 +39,19 @@ namespace CPUFramework
                 try
                 {
                     SqlDataReader dr = cmd.ExecuteReader();
-                    dt.Load(dr);
+                    if(loadtable == true)
+                    {
+                        dt.Load(dr);
+                    }
                 }
                 catch(SqlException ex)
                 {
                     string msg = ParseConstraintMsg(ex.Message);
                     throw new Exception(msg);
+                }
+                catch(InvalidCastException ex)
+                {
+                    throw new Exception(cmd.CommandText + ": " + ex.Message, ex);
                 }
             }
             SetAllColumnsAllowNulls(dt);
@@ -49,13 +61,32 @@ namespace CPUFramework
 
         public static DataTable GetDataTable(string sqlstatement) //- take a SQL statement and return a data table
         {
-            return GetDataTable(new SqlCommand(sqlstatement));
+            return DoExecuteSql(new SqlCommand(sqlstatement), true);
         }
+
+        public static void ExecuteSql(SqlCommand cmd)
+        {
+            DoExecuteSql(cmd, false);
+        }
+
 
         public static void ExecuteSql(string sqlstatement)
         {
             GetDataTable(sqlstatement);
         }
+
+        public static void SetParamValue(SqlCommand cmd, string paramname, object value)
+        {
+            try
+            {
+                cmd.Parameters[paramname].Value = value;
+            }
+            catch(Exception ex)
+            {
+                throw new Exception(cmd.CommandText + ": " + ex.Message, ex);
+            }
+        }
+
 
         private static string ParseConstraintMsg(string msg)
         {
