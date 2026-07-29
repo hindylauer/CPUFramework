@@ -91,8 +91,31 @@ namespace CPUFramework
         private static string ParseConstraintMsg(string msg)
         {
             string origmsg = msg;
+
+            if (msg.Contains("Cannot insert the value NULL into column"))
+            {
+                string pref = "Cannot insert the value NULL into column '";
+
+                int startpos = msg.IndexOf(pref) + pref.Length;
+                int endpos = msg.IndexOf("'", startpos);
+
+                if(endpos > startpos)
+                {
+                    string columnname = msg.Substring(startpos, endpos - startpos);
+
+                    columnname = columnname.Replace("WebUserId", "user")
+                        .Replace("CuisineId", "Cuisine")
+                        .Replace("RecipeName", "Recipe Name")
+                        .Replace("DateDrafted", "Date Drafted")
+                        .Replace("AmountCalories", "Amount Calories");
+
+                    return columnname + " is required.";
+                }
+            }
+
             string prefix = "ck_";
             string msgend = "";
+
             if (msg.Contains(prefix) == false)
             {
                 if (msg.Contains("u_"))
@@ -120,6 +143,15 @@ namespace CPUFramework
                     msg = msg.Substring(0, pos);
                     msg = msg.Replace("_", " ");
                     msg = msg + msgend;
+
+                    if (prefix == "f_")
+                    {
+                        var words = msg.Split(" ");
+                        if (words.Length > 1)
+                        {
+                            msg = $"Cannot delete {words[0]} because it has a related {words[1]} record.";
+                        }
+                    }
                 }
 
             }
@@ -216,6 +248,19 @@ namespace CPUFramework
             val = sb.ToString();
 #endif
             return val;
+        }
+
+        public static string SqlValue(object value)
+        {
+            if (value == DBNull.Value || value == null)
+            {
+                return "null";
+            }
+            if (value is string || value is DateTime)
+            {
+                return $"'{value.ToString().Replace("'", "''")}'";
+            }
+            return value.ToString();
         }
 
 
